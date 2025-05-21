@@ -4,14 +4,16 @@ from fastapi.responses import PlainTextResponse
 from starlette.responses import JSONResponse
 import json
 import author_route, book_route, user_route
+from uploads_and_downloads.uploads import upload_router
 from exceptions import ValueExceptionError
 # from sql_example.database import SesssionLocal, User
 from sqlalchemy.orm import Session
+
 app = FastAPI()
 app.include_router(author_route.router)
 app.include_router(book_route.router)
 app.include_router(user_route.router)
-
+app.include_router(upload_router.router)
 
 
 
