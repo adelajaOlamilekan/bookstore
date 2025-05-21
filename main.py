@@ -1,13 +1,17 @@
-from fastapi import FastAPI, HTTPException, Request, status, Response
+from fastapi import FastAPI, HTTPException, Request, status, Response, Depends
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.responses import PlainTextResponse
 from starlette.responses import JSONResponse
 import json
-import author_route, book_route
-
+import author_route, book_route, user_route
+# from sql_example.database import SesssionLocal, User
+from sqlalchemy.orm import Session
 app = FastAPI()
 app.include_router(author_route.router)
 app.include_router(book_route.router)
+app.include_router(user_route.router)
+
+
 
 
 @app.exception_handler(RequestValidationError)
@@ -24,7 +28,8 @@ async def http_exception_handler(request: Request, exc:HTTPException):
   return JSONResponse(
     status_code=exc.status_code,
     content={
-      "message": "Oops! Something went wrong"
+      "message": "Oops! Something went wrong",
+      "detail": exc.detail
     }
   )
 
@@ -37,6 +42,16 @@ async def response_validation_error(response: Response, exc: ResponseValidationE
     }
   )
 
+@app.exception_handler(user_route.ResourceExistsError)
+async def resource_exists_error(response: Response, exc:user_route.ResourceExistsError):
+  # exc.details.update({"extra_info": "Who is there"})
+  return JSONResponse(
+    content={"message": exc.message}, 
+    status_code=exc.error_code
+  )
+
 @app.get("/error_endpoint")
 async def raise_exception():
   raise HTTPException(status_code=400)
+
+
