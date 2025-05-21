@@ -4,6 +4,7 @@ from fastapi.responses import PlainTextResponse
 from starlette.responses import JSONResponse
 import json
 import author_route, book_route, user_route
+from exceptions import ValueExceptionError
 # from sql_example.database import SesssionLocal, User
 from sqlalchemy.orm import Session
 app = FastAPI()
@@ -50,6 +51,13 @@ async def resource_exists_error(response: Response, exc:user_route.ResourceExist
     status_code=exc.error_code
   )
 
+@app.exception_handler(ValueExceptionError)
+async def value_error(response: Response, exc: ValueExceptionError):
+  print("Value Error")
+  return JSONResponse(
+    content={"message": exc.message},
+    status_code=exc.error_code
+  )
 @app.get("/error_endpoint")
 async def raise_exception():
   raise HTTPException(status_code=400)

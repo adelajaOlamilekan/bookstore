@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from nosql_example.database import user_collection
 from models import UserBody, UserResponse, UserUpdate
 from sqlalchemy.exc import IntegrityError
+from bson import ObjectId
 
 router = APIRouter()
 
@@ -96,5 +97,39 @@ class ResourceExistsError(Exception):
 
 
 @router.get("/users")
-def read_users():
-  return [user for user in user_collection.find()]
+def read_users()->list[UserResponse]:
+  for user in user_collection.find():
+    print(user)
+  return [UserResponse(id = str(user["_id"]), **user) for user in user_collection.find()]
+
+@router.post("/user")
+def create_user(user: UserBody):
+  result = user_collection.insert_one(
+    user.model_dump(exclude_none=True)
+  )
+  user_response = UserResponse(
+    id = str(result.inserted_id),
+    **user.model_dump()
+  )
+
+  return user_response
+
+@router.get("/user")
+def get_user(user_id:str) -> UserResponse:
+  db_user = user_collection.find_one(
+    {
+      "_id": ObjectId(user_id)
+      if ObjectId.is_valid(user_id)
+      else None
+    }
+  )
+
+  if db_user is None:
+    raise HTTPException(
+      status_code=status.HTTP_404_NOT_FOUND,
+      detail="User not found"
+    )
+  
+  db_user["id"] = str(db_user["_id"])
+
+  return db_user
