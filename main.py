@@ -5,6 +5,8 @@ from starlette.responses import JSONResponse
 import json
 import author_route, book_route, user_route
 from uploads_and_downloads.uploads import upload_router
+from async_example import async_router
+
 from exceptions import ValueExceptionError
 # from sql_example.database import SesssionLocal, User
 from sqlalchemy.orm import Session
@@ -14,7 +16,7 @@ app.include_router(author_route.router)
 app.include_router(book_route.router)
 app.include_router(user_route.router)
 app.include_router(upload_router.router)
-
+app.include_router(async_router.router)
 
 
 @app.exception_handler(RequestValidationError)
@@ -65,3 +67,56 @@ async def raise_exception():
   raise HTTPException(status_code=400)
 
 
+
+import uvicorn
+
+def run_server():
+  uvicorn.run(app, port=8000, log_level="error")
+
+from contextlib import contextmanager
+from multiprocessing import Process
+import time
+from httpx import AsyncClient
+import asyncio
+
+#defining the start of the server as contet manager
+@contextmanager
+def run_server_in_process():
+  p = Process(target=run_server)
+  p.start()
+  time.sleep(2)
+  print("Server is running in a separate process")
+  yield
+  p.terminate()
+
+
+async def make_requests_to_the_endpoint(n: int, path: str):
+  async with AsyncClient(base_url="http://localhost:8000") as client:
+    tasks = (
+      client.get(path, timeout=float("inf"))
+      for _ in range(n)
+    )
+
+    await asyncio.gather(*tasks)
+  
+
+async def main(n:int = 1000):
+  with run_server_in_process():
+    begin = time.time()
+    await make_requests_to_the_endpoint(n, "/sync")
+    end = time.time()
+    print(
+      f"Time taken to make {n} requests "
+      f"to sync endpoint: {end - begin} seconds"
+    )
+
+    begin = time.time()
+    await make_requests_to_the_endpoint(n, "/async")
+    end = time.time()
+    print(
+      f"Time taken to make {n} requests "
+      f"to async endpoint: {end - begin} seconds"
+    )
+
+if __name__ == "__main__":
+  asyncio.run(main())
